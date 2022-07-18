@@ -1,13 +1,31 @@
 import { expect } from "chai";
+import starknet, { Abi, Call, FunctionAbi, Invocation, RawCalldata, Signature } from "starknet"
 import { BigNumber } from "ethers";
-import { starknet, ethers } from "hardhat";
-import { Account, StarknetContract, StarknetContractFactory, StringMap, Wallet, ArgentAccount } from "hardhat/types/runtime";
-import { DexTokens, ensureEnvVar, ExpectedEnvType, PairData, Pow18, Pow6, TIMEOUT } from "./helpers";
+import { starknet as hardhatStarknet, ethers, } from "hardhat";
+import { StarknetContract, StarknetContractFactory, StringMap, Wallet, ArgentAccount } from "hardhat/types/runtime";
+import { DexTokens, ensureEnvVar, ExpectedEnvType, getContract, PairData, Pow18, Pow6, TIMEOUT } from "./helpers";
 import { Log } from '../scripts/helpers';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import hardhat from 'hardhat';
-import { Provider, uint256, defaultProvider } from 'starknet';
+import { uint256 } from 'starknet';
 import BN from "bn.js";
+import fs from "fs";
+import fetch from "cross-fetch"
+
+global.fetch = fetch
+
+import {
+    Account,
+    Contract,
+    defaultProvider,
+    Provider,
+    ec,
+    json,
+    number,
+} from "starknet";
+import { Numeric } from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
+import { compileCalldata } from "starknet/dist/utils/stark";
+import { bigNumberishArrayToDecimalStringArray, toBN } from "starknet/dist/utils/number";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("dotenv").config();
@@ -17,16 +35,310 @@ const env = process.env as ExpectedEnvType;
 const JediSwapRouterAddress = "0x012b063b60553c91ed237d8905dff412fba830c5716b17821063176c6c073341";
 const StarkSwapRouterAddress = "0x07432d8a0d3f44c8b73a572417d7454c3fcac29ee9ae884b3b1ea872c32d2922";
 
+// const ERC20ABI: Abi = [{
+//     "inputs": [
+//         {
+//             "name": "spender",
+//             "type": "felt"
+//         },
+//         {
+//             "name": "amount",
+//             "type": "Uint256" // Uint256 !
+//         }
+//     ],
+//     "name": "approve",
+//     "outputs": [
+//         {
+//             "name": "success",
+//             "type": "felt"
+//         }
+//     ],
+//     "type": "function"
+// }]
+
+
+const ERC20ABI: Abi = [
+    {
+        "members": [
+            {
+                "name": "low",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "high",
+                "offset": 1,
+                "type": "felt"
+            }
+        ],
+        "name": "Uint256",
+        "size": 2,
+        "type": "struct"
+    },
+    {
+        "inputs": [
+            {
+                "name": "name",
+                "type": "felt"
+            },
+            {
+                "name": "symbol",
+                "type": "felt"
+            },
+            {
+                "name": "recipient",
+                "type": "felt"
+            }
+        ],
+        "name": "constructor",
+        "outputs": [],
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+            {
+                "name": "name",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [
+            {
+                "name": "symbol",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+            {
+                "name": "totalSupply",
+                "type": "Uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+            {
+                "name": "decimals",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "account",
+                "type": "felt"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "name": "balance",
+                "type": "Uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "owner",
+                "type": "felt"
+            },
+            {
+                "name": "spender",
+                "type": "felt"
+            }
+        ],
+        "name": "allowance",
+        "outputs": [
+            {
+                "name": "remaining",
+                "type": "Uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "recipient",
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "transfer",
+        "outputs": [
+            {
+                "name": "success",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "sender",
+                "type": "felt"
+            },
+            {
+                "name": "recipient",
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+            {
+                "name": "success",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "spender",
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "approve",
+        "outputs": [
+            {
+                "name": "success",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "spender",
+                "type": "felt"
+            },
+            {
+                "name": "added_value",
+                "type": "Uint256"
+            }
+        ],
+        "name": "increaseAllowance",
+        "outputs": [
+            {
+                "name": "success",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "spender",
+                "type": "felt"
+            },
+            {
+                "name": "subtracted_value",
+                "type": "Uint256"
+            }
+        ],
+        "name": "decreaseAllowance",
+        "outputs": [
+            {
+                "name": "success",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "recipient",
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "user",
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "burn",
+        "outputs": [],
+        "type": "function"
+    }
+]
+
 describe("Starknet", function () {
 
     this.timeout(TIMEOUT);
-
-    let owner: SignerWithAddress;
     let account: Account;
     let router: StarknetContract;
     let periphery: StarknetContract;
 
     const pairData: PairData[] = []
+
+    it.only("should connect to an existing Argent account", async function () {
+        const keyPair = ec.getKeyPair(env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY)
+        account = new Account(
+            defaultProvider,
+            env.STARKNET_MAINNET_ACCOUNT_ADDRESS.toLowerCase(
+            ),
+            keyPair
+        );
+        // const account2 = await hardhatStarknet.getAccountFromAddress(
+        //     env.STARKNET_MAINNET_ACCOUNT_ADDRESS,
+        //     env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY,
+        //     "Argent"
+        // )
+    });
 
     it.skip("should compile the project and instanciate a provider", async function () {
         await hardhat.run("starknet-compile", {
@@ -38,23 +350,22 @@ describe("Starknet", function () {
         // const provider = new Provider({ baseUrl: env.INFURA_STARKNET_GOERLI })
         // const block = await defaultProvider.getBlock();
         // const provider = new Provider({ network: "goerli-alpha" })
-
-        const provider = new Provider({
-            baseUrl: 'https://alpha4.starknet.io',
-            feederGatewayUrl: 'feeder_gateway',
-            gatewayUrl: 'gateway'
-        })
+        // const provider = new Provider({
+        //     baseUrl: 'https://alpha4.starknet.io',
+        //     feederGatewayUrl: 'feeder_gateway',
+        //     gatewayUrl: 'gateway'
+        // })
         // const block = await provider.getBlock();
-        const code = await provider.getCode("0x012b063b60553c91ed237d8905dff412fba830c5716b17821063176c6c073341");
+        // const code = await provider.getCode("0x012b063b60553c91ed237d8905dff412fba830c5716b17821063176c6c073341");
         // console.dir(block)
     });
 
-    it("should setup an account", async function () {
+    it.skip("should setup an account", async function () {
         // const signers = await ethers.getSigners();
         // owner = signers[0];
-        account = await starknet.deployAccount("OpenZeppelin", {
-            privateKey: ensureEnvVar("STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY"),
-        });
+        // account = await starknet.deployAccount("OpenZeppelin", {
+        //     privateKey: env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY,
+        // });
         // OpenZeppelin and Argent accounts have some differences:
         // See https://github.com/Shard-Labs/starknet-hardhat-plugin#multicalls
         // Argent account needs to be initialized after deployment. This has to be done with another funded account.
@@ -66,13 +377,14 @@ describe("Starknet", function () {
         //     "Argent"
         // )
 
-        Log.info("Account :", account.address)
+        // Log.info("Account :", account.address)
         // Log.info("PrivKey :", account.privateKey)
+
     });
 
-    it("should deploy the Router and the Periphery", async function () {
-        const routerFactory = await starknet.getContractFactory("router");
-        const peripheryFactory = await starknet.getContractFactory("periphery");
+    it.skip("should deploy the Router and the Periphery", async function () {
+        const routerFactory = await hardhatStarknet.getContractFactory("router");
+        const peripheryFactory = await hardhatStarknet.getContractFactory("periphery");
         router = await routerFactory.deploy({ owner: account.address, jediExchange: JediSwapRouterAddress, starkswapExchange: StarkSwapRouterAddress });
         periphery = await peripheryFactory.deploy({ routerJediSwap: JediSwapRouterAddress });
         const routerOwner: BigInt = (await router.call("getOwner"))["owner"];
@@ -99,7 +411,7 @@ describe("Starknet", function () {
     // });
 
 
-    it("should iterate on every exchange", async function () {
+    it.skip("should iterate on every exchange", async function () {
         const exchangesLength: BigInt = (await router.call("getExchangesLength"))["length"];
         Log.info("exchangesLength :", exchangesLength.toString())
         for (let x = 0; x < Number(exchangesLength); x++) {
@@ -111,15 +423,15 @@ describe("Starknet", function () {
         }
     });
 
-    // it.skip("should instanciate Jedi Router", async function () {
-    //     const jediRouterFactory = await starknet.getContractFactory("contracts/dexes/jedi/IJediRouter.cairo");
-    //     const jediRouter = jediRouterFactory.getContractAt(JediSwapRouterAddress); // address of a previously deployed contract
-    //     const abi = jediRouter.getAbi();
-    //     Log.info(abi)
-    //     const jediFactory = await jediRouter.call("factory");
-    // });
+    it.skip("should instanciate Jedi Router", async function () {
+        const jediRouterFactory = await hardhatStarknet.getContractFactory("contracts/dexes/jedi/IJediRouter.cairo");
+        const jediRouter = jediRouterFactory.getContractAt(JediSwapRouterAddress); // address of a previously deployed contract
+        const abi = jediRouter.getAbi();
+        Log.info(abi)
+        const jediFactory = await jediRouter.call("factory");
+    });
 
-    it("should request data from periphery from JediSwap", async function () {
+    it.skip("should request data from periphery from JediSwap", async function () {
         const res = await periphery.call("getJediPairs");
         const pairs = res["all_pairs"];
         const size = Number(res["all_pairs_len"]);
@@ -157,7 +469,7 @@ describe("Starknet", function () {
         }
     });
 
-    it("should request a quote for a simple swap with Jedi supported tokens", async function () {
+    it.skip("should request a quote for a simple swap with Jedi supported tokens", async function () {
         const targetPair = pairData[0];
         const tokenIn = targetPair.token0;
         const tokenOut = targetPair.token1;
@@ -178,37 +490,102 @@ describe("Starknet", function () {
         Log.info("getOptimaLExchange: ", res["exchangeIndex"]);
     });
 
+
+
     it.only("should approve and execute a swap ", async function () {
         // ...
-        const commonTokenIn = DexTokens.ether.address;
-        const commonTokenOut = DexTokens.usdc.address;
-        const tmp0 = Pow18 / BigInt(100); // Hardcoded : 0.01 ETHER
-        const tmp1 = tmp0.toString();
-        const tmp2 = new BN(tmp1);
-        const amountInTokenIn = uint256.bnToUint256(tmp2);
-        Log.info("commonTokenIn       : ", commonTokenIn);
-        Log.info("commonTokenOut      : ", commonTokenOut);
-        Log.info("amountInTokenIn.low : ", amountInTokenIn.low.toString());
+        // const commonTokenIn = DexTokens.ether.address.toLowerCase();
+        // const commonTokenOut = DexTokens.usdc.address.toLowerCase();
+        // const tmp0 = Pow18 / BigInt(100); // Hardcoded : 0.01 ETHER
+        // const tmp1 = tmp0.toString();
+        // const amountInTokenInAsBN = new BN(tmp1);
+        // const amountInTokenIn = uint256.bnToUint256(amountInTokenInAsBN);
+        // Log.info("commonTokenIn       : ", commonTokenIn);
+        // Log.info("commonTokenOut      : ", commonTokenOut);
+        // Log.info("amountInTokenIn.low : ", amountInTokenIn.low.toString());
+        // const accountOZ = await starknet.deployAccount("OpenZeppelin", {
+        //     privateKey: env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY,
+        // });
 
+        const wethAddress = DexTokens.ether.address.toLowerCase();
+        const erc20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
+        const ether = await erc20Factory.getContractAt(wethAddress);
 
-        const account = await starknet.getAccountFromAddress(
-
-        )
-        // getAccountFromAddress: (address: string, privateKey: string, accountType: AccountImplementationType) => Promise<Account>;
-
-        const account2 = await starknet.deployAccount("OpenZeppelin", {
-            privateKey: ensureEnvVar("STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY"),
+        const balance = await ether.call("balanceOf", {
+            account: account.address
         });
+        Log.info("balanceOf       : ", balance);
+
+        const contract = new Contract(ERC20ABI, ether.address.toLowerCase(), defaultProvider);
+
+        const approveRawTx: Call = {
+            contractAddress: contract.address.toLowerCase(),
+            entrypoint: "approve",
+            calldata: compileCalldata({
+                spender: JediSwapRouterAddress,
+                amount: {
+                    type: "struct",
+                    ...uint256.bnToUint256("42")
+                }
+            })
+        }
+        console.log(approveRawTx);
+
+        const tx = await account.execute(approveRawTx);
+
+        console.log(tx);
+
+        // execute(calls: Call | Call[], abis?: Abi[] | undefined, transactionsDetail?: InvocationsDetails): Promise<AddTransactionResponse>;
+        // export declare type Call = Omit<Invocation, 'signature'>;
+
+        // type Invocation = {
+        //     contractAddress: string;
+        //     entrypoint: string;
+        //     calldata?: RawCalldata;
+        //     signature?: Signature;
+        // };
 
 
-        const etherAddress = DexTokens.ether.address;
-        const erc20Factory: StarknetContractFactory = await starknet.getContractFactory("ERC20");
-        const ether = await erc20Factory.getContractAt(etherAddress);
-        const b = await account.call(ether, "balanceOf", {
-            account: env.STARKNET_MAINNET_ACCOUNT_ADDRESS
-        });
-        Log.info("account : ", account.address);
-        Log.info("balanceOf : ", b);
+
+
+
+
+
+        // const estimatedGasFees = await ether.estimateFee("approve", {
+        //     spender: StarkSwapRouterAddress, // router.address,
+        //     amount: amountInTokenIn
+        // })
+        // console.log(estimatedGasFees);
+
+        // const tx = await ether.invoke("approve", {
+        //     spender: StarkSwapRouterAddress, // router.address,
+        //     amount: amountInTokenIn
+        // }, {
+        //     maxFee: BigInt(10000000000000000000)
+        // })
+        // console.log(tx);
+
+        // export interface InvokeOptions {
+        //     signature?: Array<Numeric>;
+        //     wallet?: Wallet;
+        //     nonce?: Numeric;
+        //     maxFee?: Numeric;
+        // }
+
+
+
+        // -- v2 -- KO
+        // const weth = DexTokens.ether.address;
+        // const wETHContract = getContract(weth, "./abis/ERC20.json");
+        // const res = await wETHContract.balance_of(env.STARKNET_MAINNET_ACCOUNT_ADDRESS)
+        // console.log(wETHContract);
+        // console.log(res);
+
+        Log.info("env.account        : ", env.STARKNET_MAINNET_ACCOUNT_ADDRESS);
+        Log.info("env.account pKey   : ", env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY);
+        Log.info("account.address    : ", account.address);
+        // Log.info("balanceOf       : ", balance);
+        // Log.info("balanceOf b2       : ", b2["balance"]["low"]);
 
         // Approve ToDo
 
@@ -222,6 +599,7 @@ describe("Starknet", function () {
 
     it("should request a quote for a simple swap with DEX's commonly supported tokens", async function () {
         // ...
+
     });
 
     // it.only("should test random stuff", async () => {

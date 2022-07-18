@@ -1,7 +1,8 @@
 import BN from "bn.js";
 import { expect } from "chai";
 import { BigNumberish } from "ethers";
-import { uint256 } from 'starknet';
+import { Contract, uint256 } from 'starknet';
+import fs from 'fs';
 
 
 /** 15 min */
@@ -51,21 +52,25 @@ export const DexTokens: Record<string, Token> = {
         name: "ether",
         decimals: 18,
         address: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+        // L1 Address : 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     },
     "usdc": {
         name: "usdc",
         decimals: 6,
         address: "0x005a643907b9a4bc6a55e9069c4fd5fd1f5c79a22470690f75556c4736e34426"
+        // L1 Address : 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
     },
     "wbtc": {
         name: "wbtc",
         decimals: 8,
         address: "0x012d537dc323c439dc65c976fad242d5610d27cfb5f31689a0a319b8be7f3d56"
+        // L1 Address : 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599
     },
     "dai": {
         name: "dai",
         decimals: 18,
         address: "0x03e85bfbb8e2a42b7bead9e88e9a1b19dbccf661471061807292120462396ec9"
+        // L1 Address : 0x6B175474E89094C44Da98b954EedeAC495271d0F
     }
 }
 
@@ -85,6 +90,13 @@ export function ensureEnvVar(varName: string): string {
         throw new Error(`Env var ${varName} not set or empty`);
     }
     return process.env[varName] as string;
+}
+
+export const getContract = (address: string, name: "./abis/Account.json" | "./abis/ERC20.json"): Contract => {
+    const compiled = JSON.parse(
+        fs.readFileSync(name).toString("ascii")
+    );
+    return new Contract(compiled.abi, address);
 }
 
 /**
