@@ -239,11 +239,11 @@ describe("Starknet", function () {
             })
         }
         Log.info("approveRawTx       : ", approveRawTx);
-        const tx = await account.execute(approveRawTx);
-        Log.info("tx.address       : ", tx.address);
-        Log.info("tx.class_hash       : ", tx.class_hash);
-        Log.info("tx.code       : ", tx.code);
-        Log.info("tx.transaction_hash       : ", tx.transaction_hash);
+        const txApprove = await account.execute(approveRawTx);
+        Log.info("txApprove.address       : ", txApprove.address);
+        Log.info("txApprove.class_hash       : ", txApprove.class_hash);
+        Log.info("txApprove.code       : ", txApprove.code);
+        Log.info("txApprove.transaction_hash       : ", txApprove.transaction_hash);
 
         const commonTokenIn = DexTokens.ether.address.toLowerCase();
         const commonTokenOut = DexTokens.usdc.address.toLowerCase();
@@ -253,11 +253,23 @@ describe("Starknet", function () {
             entrypoint: "executeSwap",
             calldata: compileCalldata({
                 _tokenIn: commonTokenIn,
-                _tokenOut : commonTokenOut, 
-                _amountIn : "10000000000"
+                _tokenOut: commonTokenOut,
+                _amountIn: "10000000000"
             })
         }
 
+        // Erreur dans notre Router 
+        // Wait Contract Deployment ? Wait Approve ?
+        // 1. Test without Starkswap
+        // 2. Test with removed Starkswap Cairo Line of code one by one
+
+        // NB : don't recompile
+        Log.info("executeRawTx       : ", executeRawTx);
+        const txSwap = await account.execute(executeRawTx);
+        Log.info("txSwap.address       : ", txSwap.address);
+        Log.info("txSwap.class_hash       : ", txSwap.class_hash);
+        Log.info("txSwap.code       : ", txSwap.code);
+        Log.info("txSwap.transaction_hash       : ", txSwap.transaction_hash);
     });
 
     it("should execute a swap ", async function () {
