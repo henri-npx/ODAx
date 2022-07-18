@@ -84,8 +84,14 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     exchangesLength.write(0)
     Ownable.initializer(owner)
     addExchange(jediExchange)  # Tmp
-    # addExchange(jediExchange)  # Tmp
-    # addExchange(starkswapExchange)  # Tmp
+    addExchange(starkswapExchange)  # Tmp
+    let (exchange) = getExchanges(0)
+    assert exchange = jediExchange
+    let (exchange) = getExchanges(1)
+    assert exchange = starkswapExchange
+    let (length) = exchangesLength.read()
+    assert length = 2
+    addExchange(starkswapExchange)  # Tmp
     return ()
 end
 
@@ -117,6 +123,32 @@ end
 
 # >>>>> VIEW - COMPUTE <<<<<<
 
+@view
+func getStarkReserve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    poolAddress : felt, tokenaddress : felt
+) -> (reserve : Uint256):
+    let (reserve) = IERC20.balanceOf(contract_address=tokenaddress, account=poolAddress)
+    return (reserve)
+end
+
+@view
+func getStarkReserve2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    poolAddress : felt
+) -> (reserve : Uint256):
+    let (reserve) = IStarkSwapPair.poolTokenBalance(poolAddress, 2)
+    return (reserve)
+end
+
+@view
+func getStarkinputPrice2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    poolAddress : felt, amount : Uint256
+) -> (price : Uint256):
+    let (reserve1) = IStarkSwapPair.poolTokenBalance(poolAddress, 1)
+    let (reserve2) = IStarkSwapPair.poolTokenBalance(poolAddress, 2)
+    let (price) = IStarkSwapPair.get_input_price(poolAddress, amount, reserve1, reserve2)
+    return (price)
+end
+
 @external
 func addExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _exchange : felt
@@ -136,10 +168,10 @@ func getAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 ) -> (amountOut : Uint256, exchangeIndex : felt):
     alloc_locals
 
-    let (addr) = exchanges.read(_exchangeIndex)
-
     # JediSwap
     if _exchangeIndex == 0:
+        let (addr) = exchanges.read(_exchangeIndex)
+
         let (factory) = IJediRouter.factory(contract_address=addr)
         # ToDo Return if null
         let (pair) = IJediFactory.get_pair(factory, _tokenIn, _tokenOut)
@@ -153,18 +185,23 @@ func getAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
     # StarkSwap
     if _exchangeIndex == 1:
-        let (pairAddress) = IStarkSwapRouter.getPair(addr, _tokenIn, _tokenOut)
-        # ToDo Return if null
-        let (tokenA) = IStarkSwapPair.getTokenA(addr)
-        let (reserveA) = IStarkSwapPair.poolTokenBalance(addr, 1)
-        let (reserveB) = IStarkSwapPair.poolTokenBalance(addr, 2)
+        let (local addr) = exchanges.read(_exchangeIndex)
+
+        let (local pairAddress) = IStarkSwapRouter.getPair(addr, _tokenIn, _tokenOut)
+        # # ToDo Return if null
+        let (tokenA) = IStarkSwapPair.getTokenA(pairAddress)
+        let reserveB : Uint256 = IStarkSwapPair.poolTokenBalance(pairAddress, 2)
+        let reserveA : Uint256 = IStarkSwapPair.poolTokenBalance(pairAddress, 1)
+
         if _tokenIn == tokenA:
-            let (price) = IStarkSwapPair.get_input_price(addr, _amountIn.low, reserveA, reserveB)  # Possible error with .low
-            let res1 = _amountIn.low * 10000 / price / 10000
+            let (price) = IStarkSwapPair.get_input_price(pairAddress, _amountIn, reserveA, reserveB)  # Possible error with .low
+            let res1 = _amountIn.low * 10000 / price.low / 10000
             return (Uint256(res1, 0), _exchangeIndex)
         else:
-            let (price) = IStarkSwapPair.get_output_price(addr, _amountIn.low, reserveA, reserveB)  # Possible error with .low
-            let res2 = _amountIn.low * 10000 / price / 10000
+            let (price) = IStarkSwapPair.get_output_price(
+                pairAddress, _amountIn, reserveA, reserveB
+            )  # Possible error with .low
+            let res2 = _amountIn.low * 10000 / price.low / 10000
             return (Uint256(res2, 0), _exchangeIndex)
         end
     end
@@ -267,7 +304,9 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 tempvar range_check_ptr = range_check_ptr
 
                 let (pairAddressA) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
-                IStarkSwapPair.exactTokenAToMinTokenB(pairAddressA, _amountIn.low, 42, caller)
+                IStarkSwapPair.exactTokenAToMinTokenB(
+                    pairAddressA, _amountIn, Uint256(42, 0), caller
+                )
 
                 return ()
             else:
@@ -276,7 +315,9 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 tempvar range_check_ptr = range_check_ptr
 
                 let (pairAddressB) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
-                IStarkSwapPair.exactTokenBToMinTokenA(pairAddressB, _amountIn.low, 42, caller)
+                IStarkSwapPair.exactTokenBToMinTokenA(
+                    pairAddressB, _amountIn, Uint256(42, 0), caller
+                )
 
                 return ()
             end

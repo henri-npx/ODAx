@@ -219,7 +219,7 @@ describe("Starknet", function () {
         }
     });
 
-    it("should approve and execute a swap ", async function () {
+    it("should approve", async function () {
 
         const wethAddress = DexTokens.ether.address.toLowerCase();
         const ERC20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
@@ -234,7 +234,7 @@ describe("Starknet", function () {
                 spender: router.address,// JediSwapRouterAddress,
                 amount: {
                     type: "struct",
-                    ...uint256.bnToUint256("4242")
+                    ...uint256.bnToUint256("424200000000000000000000000")
                 }
             })
         }
@@ -244,6 +244,19 @@ describe("Starknet", function () {
         Log.info("tx.class_hash       : ", tx.class_hash);
         Log.info("tx.code       : ", tx.code);
         Log.info("tx.transaction_hash       : ", tx.transaction_hash);
+
+        const commonTokenIn = DexTokens.ether.address.toLowerCase();
+        const commonTokenOut = DexTokens.usdc.address.toLowerCase();
+
+        const executeRawTx: Call = {
+            contractAddress: router.address.toLocaleLowerCase(),
+            entrypoint: "executeSwap",
+            calldata: compileCalldata({
+                _tokenIn: commonTokenIn,
+                _tokenOut : commonTokenOut, 
+                _amountIn : "10000000000"
+            })
+        }
 
     });
 
