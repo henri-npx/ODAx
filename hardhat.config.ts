@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@shardlabs/starknet-hardhat-plugin";
 import "@typechain/starknet";
 import { ExpectedEnvType } from "./test/helpers";
+import StarknetTarget from "@typechain/starknet";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("dotenv").config();
@@ -40,6 +41,7 @@ const config: HardhatUserConfig = {
 			},
 		},
 	},
+
 	networks: {
 		devnet: {
 			url: "http://127.0.0.1:5050",
@@ -59,6 +61,7 @@ const config: HardhatUserConfig = {
 	typechain: {
 		outDir: "typechain"
 	}
+
 };
 
 export default config;

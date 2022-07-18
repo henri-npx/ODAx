@@ -6,7 +6,7 @@ import { DexTokens, ensureEnvVar, ExpectedEnvType, PairData, Pow18, Pow6, TIMEOU
 import { Log } from '../scripts/helpers';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import hardhat from 'hardhat';
-import { uint256 } from 'starknet';
+import { Provider, uint256, defaultProvider } from 'starknet';
 import BN from "bn.js";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -28,13 +28,25 @@ describe("Starknet", function () {
 
     const pairData: PairData[] = []
 
-    it("should compile the project", async function () {
+    it.skip("should compile the project and instanciate a provider", async function () {
         await hardhat.run("starknet-compile", {
             paths: ["contracts/router.cairo"]
         });
         await hardhat.run("starknet-compile", {
             paths: ["contracts/periphery.cairo"]
         });
+        // const provider = new Provider({ baseUrl: env.INFURA_STARKNET_GOERLI })
+        // const block = await defaultProvider.getBlock();
+        // const provider = new Provider({ network: "goerli-alpha" })
+
+        const provider = new Provider({
+            baseUrl: 'https://alpha4.starknet.io',
+            feederGatewayUrl: 'feeder_gateway',
+            gatewayUrl: 'gateway'
+        })
+        // const block = await provider.getBlock();
+        const code = await provider.getCode("0x012b063b60553c91ed237d8905dff412fba830c5716b17821063176c6c073341");
+        // console.dir(block)
     });
 
     it("should setup an account", async function () {
@@ -69,7 +81,7 @@ describe("Starknet", function () {
         Log.info("Helper  :", periphery.address.toString())
         // ..
         const name = await router.call("name");
-        Log.info("Router Name :", name);
+        Log.info("Router Name :", name["name"]);
     });
 
     // Fail with : yarn hardhat test test/core.ts --starknet-network alpha
@@ -166,7 +178,7 @@ describe("Starknet", function () {
         Log.info("getOptimaLExchange: ", res["exchangeIndex"]);
     });
 
-    it("should request a quote for a simple swap with Starkswap supported tokens", async function () {
+    it.only("should approve and execute a swap ", async function () {
         // ...
         const commonTokenIn = DexTokens.ether.address;
         const commonTokenOut = DexTokens.usdc.address;
@@ -178,12 +190,34 @@ describe("Starknet", function () {
         Log.info("commonTokenOut      : ", commonTokenOut);
         Log.info("amountInTokenIn.low : ", amountInTokenIn.low.toString());
 
+
+        const account = await starknet.getAccountFromAddress(
+
+        )
+        // getAccountFromAddress: (address: string, privateKey: string, accountType: AccountImplementationType) => Promise<Account>;
+
+        const account2 = await starknet.deployAccount("OpenZeppelin", {
+            privateKey: ensureEnvVar("STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY"),
+        });
+
+
+        const etherAddress = DexTokens.ether.address;
+        const erc20Factory: StarknetContractFactory = await starknet.getContractFactory("ERC20");
+        const ether = await erc20Factory.getContractAt(etherAddress);
+        const b = await account.call(ether, "balanceOf", {
+            account: env.STARKNET_MAINNET_ACCOUNT_ADDRESS
+        });
+        Log.info("account : ", account.address);
+        Log.info("balanceOf : ", b);
+
         // Approve ToDo
-        const tx = account.invoke(router, "executeSwap", {
-            _tokenIn: commonTokenIn,
-            _tokenOut: commonTokenOut,
-            _amountIn: amountInTokenIn, // Uint256
-        })
+
+        // Execute
+        // const tx = account.invoke(router, "executeSwap", {
+        //     _tokenIn: commonTokenIn,
+        //     _tokenOut: commonTokenOut,
+        //     _amountIn: amountInTokenIn, // Uint256
+        // })
     });
 
     it("should request a quote for a simple swap with DEX's commonly supported tokens", async function () {

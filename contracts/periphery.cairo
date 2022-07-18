@@ -4,7 +4,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.IERC20 import IERC20
+from contracts.erc20.IERC20 import IERC20
 from contracts.dexes.jedi.IJediPair import IJediPair
 from contracts.dexes.jedi.IJediRouter import IJediRouter
 from contracts.dexes.jedi.IJediFactory import IJediFactory
