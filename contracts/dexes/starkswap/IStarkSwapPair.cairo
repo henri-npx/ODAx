@@ -1,5 +1,7 @@
 %lang starknet
 
+from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_eq
+
 @contract_interface
 namespace IStarkSwapPair:
     func getTokenA() -> (tokenA : felt):
@@ -8,17 +10,17 @@ namespace IStarkSwapPair:
     func getTokenB() -> (tokenB : felt):
     end
 
-    func get_input_price(token1_amount : felt, token1_reserve : felt, token2_reserve : felt) -> (
-        res : felt
-    ):
+    func get_input_price(
+        token1_amount : Uint256, token1_reserve : Uint256, token2_reserve : Uint256
+    ) -> (res : Uint256):
     end
 
-    func get_output_price(token2_amount : felt, token1_reserve : felt, token2_reserve : felt) -> (
-        res : felt
-    ):
+    func get_output_price(
+        token2_amount : Uint256, token1_reserve : Uint256, token2_reserve : Uint256
+    ) -> (res : Uint256):
     end
 
-    func poolTokenBalance(token_id : felt) -> (balance : felt):
+    func poolTokenBalance(token_id : felt) -> (balance : Uint256):
     end
 
     func maxTokenAToExactTokenB(max_token_a_amount : felt, token_b_amount : felt, recipient : felt):
