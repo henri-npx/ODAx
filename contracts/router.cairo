@@ -13,7 +13,7 @@ from starkware.starknet.common.syscalls import (
 
 from contracts.ownable import Ownable
 
-from contracts.erc20.IERC20 import IERC20
+from contracts.IERC20 import IERC20
 from contracts.dexes.jedi.IJediPair import IJediPair
 from contracts.dexes.jedi.IJediRouter import IJediRouter
 from contracts.dexes.jedi.IJediFactory import IJediFactory
@@ -84,7 +84,13 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     exchangesLength.write(0)
     Ownable.initializer(owner)
     addExchange(jediExchange)  # Tmp
-    # addExchange(jediExchange)  # Tmp
+    addExchange(starkswapExchange)  # Tmp
+    let (exchange) = getExchanges(0)
+    assert exchange = jediExchange
+    let (exchange) = getExchanges(1)
+    assert exchange = starkswapExchange
+    let (length) = exchangesLength.read()
+    assert length = 2
     # addExchange(starkswapExchange)  # Tmp
     return ()
 end
@@ -117,6 +123,14 @@ end
 
 # >>>>> VIEW - COMPUTE <<<<<<
 
+@view
+func getStarkReserve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    poolAddress : felt
+) -> (reserve : felt):
+    let (reserve) = IStarkSwapPair.poolTokenBalance(poolAddress, 1)
+    return (reserve)
+end
+
 @external
 func addExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _exchange : felt
@@ -136,10 +150,10 @@ func getAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 ) -> (amountOut : Uint256, exchangeIndex : felt):
     alloc_locals
 
-    let (addr) = exchanges.read(_exchangeIndex)
-
     # JediSwap
     if _exchangeIndex == 0:
+        let (addr) = exchanges.read(_exchangeIndex)
+
         let (factory) = IJediRouter.factory(contract_address=addr)
         # ToDo Return if null
         let (pair) = IJediFactory.get_pair(factory, _tokenIn, _tokenOut)
@@ -153,19 +167,27 @@ func getAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
     # StarkSwap
     if _exchangeIndex == 1:
-        let (pairAddress) = IStarkSwapRouter.getPair(addr, _tokenIn, _tokenOut)
-        # ToDo Return if null
-        let (tokenA) = IStarkSwapPair.getTokenA(addr)
-        let (reserveA) = IStarkSwapPair.poolTokenBalance(addr, 1)
-        let (reserveB) = IStarkSwapPair.poolTokenBalance(addr, 2)
+        let (local addr) = exchanges.read(_exchangeIndex)
+
+        let (local pairAddress) = IStarkSwapRouter.getPair(addr, _tokenIn, _tokenOut)
+        # # ToDo Return if null
+        let (tokenA) = IStarkSwapPair.getTokenA(pairAddress)
+        let (reserveB) = getStarkReserve(pairAddress)
+        # let (reserveA) = IStarkSwapPair.poolTokenBalance(pairAddress, 2)
         if _tokenIn == tokenA:
-            let (price) = IStarkSwapPair.get_input_price(addr, _amountIn.low, reserveA, reserveB)  # Possible error with .low
-            let res1 = _amountIn.low * 10000 / price / 10000
+            let (price) = IStarkSwapPair.get_input_price(
+                pairAddress, _amountIn.low, 100000000000000000000, 100000000000000000000
+            )  # Possible error with .low
+            let res1 = _amountIn.low * 10000 / 1 / 10000
             return (Uint256(res1, 0), _exchangeIndex)
         else:
-            let (price) = IStarkSwapPair.get_output_price(addr, _amountIn.low, reserveA, reserveB)  # Possible error with .low
-            let res2 = _amountIn.low * 10000 / price / 10000
-            return (Uint256(res2, 0), _exchangeIndex)
+            # let (price) = IStarkSwapPair.get_output_price(
+            #         pairAddress, _amountIn.low, reserveA, reserveB
+            #     )  # Possible error with .low
+            #     let res2 = _amountIn.low * 10000 / price / 10000
+            #     return (Uint256(res2, 0), _exchangeIndex)
+            let res1 = _amountIn.low * 10000 / 1 / 10000
+            return (Uint256(res1, 0), _exchangeIndex)
         end
     end
 
