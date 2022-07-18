@@ -1,0 +1,12 @@
+node_modules
+cache
+artifacts
+# .env
+typechain
+typechain-types
+coverage
+coverage.json
+yarn.lock
+package-lock.json
+.env
+starknet-artifacts
