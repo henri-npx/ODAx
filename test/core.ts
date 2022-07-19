@@ -54,9 +54,9 @@ describe("Starknet", function () {
             ),
             keyPair
         );
-        Log.info("env.account        : ", env.STARKNET_MAINNET_ACCOUNT_ADDRESS);
-        Log.info("env.account pKey   : ", env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY);
-        Log.info("account.address    : ", account.address);
+        Log.info("🔑 env.account        : ", env.STARKNET_MAINNET_ACCOUNT_ADDRESS);
+        Log.info("🔑 env.account pKey   : ", env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY);
+        Log.info("👨‍💻 account.address    : ", account.address);
     });
 
     it("should compile the project and instanciate a provider", async function () {
@@ -111,11 +111,11 @@ describe("Starknet", function () {
             router = await routerFactory.deploy({ owner: account.address, jediExchange: JediSwapRouterAddress, starkswapExchange: StarkSwapRouterAddress });
             periphery = await peripheryFactory.deploy({ routerJediSwap: JediSwapRouterAddress });
             const routerOwner: BigInt = (await router.call("getOwner"))["owner"];
-            Log.info("Owner   :", routerOwner.toString(16)) // BigInt - https://www.rapidtables.com/convert/number/decimal-to-hex.html
-            Log.info("Router  :", router.address.toString())
-            Log.info("Helper  :", periphery.address.toString())
+            // Log.info("Owner   :", routerOwner.toString(16)) // BigInt - https://www.rapidtables.com/convert/number/decimal-to-hex.html
+            Log.info("📜 Router  :", router.address.toString())
+            // Log.info("Helper  :", periphery.address.toString())
             const name = await router.call("name");
-            Log.info("Router Name :", name["name"]);
+            Log.info("📜 Router Name :", name["name"]);
         }
     });
 
@@ -143,58 +143,58 @@ describe("Starknet", function () {
                 const exchange = (await router.call("getExchanges", {
                     _index: 0
                 }))["exchange"];
-                Log.info("exchange[" + x + "]:", exchange)
+                Log.info("🔄 exchange[" + x + "]:", exchange)
             }
         }
     });
 
-    it("should instanciate Jedi Router [TODO]", async function () {
-        // const jediRouterFactory = await hardhatStarknet.getContractFactory("contracts/dexes/jedi/IJediRouter.cairo");
-        // const jediRouter = jediRouterFactory.getContractAt(JediSwapRouterAddress); // address of a previously deployed contract
-        // const abi = jediRouter.getAbi();
-        // Log.info(abi)
-        // const jediFactory = await jediRouter.call("factory");
-    });
+    // it("should instanciate Jedi Router [TODO]", async function () {
+    // const jediRouterFactory = await hardhatStarknet.getContractFactory("contracts/dexes/jedi/IJediRouter.cairo");
+    // const jediRouter = jediRouterFactory.getContractAt(JediSwapRouterAddress); // address of a previously deployed contract
+    // const abi = jediRouter.getAbi();
+    // Log.info(abi)
+    // const jediFactory = await jediRouter.call("factory");
+    // });
 
-    it("should request data from periphery from JediSwap", async function () {
-        if (!QUICK_MODE) {
-            const res = await periphery.call("getJediPairs");
-            const pairs = res["all_pairs"];
-            const size = Number(res["all_pairs_len"]);
-            const MAX = 3
-            for (let x = 0; x < size; x++) {
+    // it("should request data from periphery from JediSwap", async function () {
+    //     if (!QUICK_MODE) {
+    //         const res = await periphery.call("getJediPairs");
+    //         const pairs = res["all_pairs"];
+    //         const size = Number(res["all_pairs_len"]);
+    //         const MAX = 3
+    //         for (let x = 0; x < size; x++) {
 
-                if (x > MAX) break; // DEV
+    //             if (x > MAX) break; // DEV
 
-                const pair = pairs[x] as string;
-                const pairInfo = await periphery.call("getJediPairInfo", {
-                    pair: pair
-                })
-                const reserve0 = uint256.uint256ToBN(pairInfo["reserve0"]);
-                const reserve1 = uint256.uint256ToBN(pairInfo["reserve1"]);
-                const token0 = pairInfo["token0"]
-                const token1 = pairInfo["token1"]
-                const decimalsToken0 = pairInfo["decimals0"]
-                const decimalsToken1 = pairInfo["decimals1"]
-                Log.info("pair[" + x + "]: address  :", pair);
-                Log.info("pair[" + x + "]: reserve0 :", reserve0.toString());
-                Log.info("pair[" + x + "]: reserve1 :", reserve1.toString());
-                Log.info("pair[" + x + "]: token0   :", token0);
-                Log.info("pair[" + x + "]: token1   :", token1);
-                Log.info("pair[" + x + "]: decimalsToken0   :", decimalsToken0);
-                Log.info("pair[" + x + "]: decimalsToken1   :", decimalsToken1);
-                const currentPair = {
-                    reserve0: reserve0,
-                    reserve1: reserve1,
-                    token0: token0,
-                    token1: token1,
-                    decimalsToken0: Number(decimalsToken0),
-                    decimalsToken1: Number(decimalsToken1),
-                }
-                pairData.push(currentPair);
-            }
-        }
-    });
+    //             const pair = pairs[x] as string;
+    //             const pairInfo = await periphery.call("getJediPairInfo", {
+    //                 pair: pair
+    //             })
+    //             const reserve0 = uint256.uint256ToBN(pairInfo["reserve0"]);
+    //             const reserve1 = uint256.uint256ToBN(pairInfo["reserve1"]);
+    //             const token0 = pairInfo["token0"]
+    //             const token1 = pairInfo["token1"]
+    //             const decimalsToken0 = pairInfo["decimals0"]
+    //             const decimalsToken1 = pairInfo["decimals1"]
+    //             Log.info("pair[" + x + "]: address  :", pair);
+    //             Log.info("pair[" + x + "]: reserve0 :", reserve0.toString());
+    //             Log.info("pair[" + x + "]: reserve1 :", reserve1.toString());
+    //             Log.info("pair[" + x + "]: token0   :", token0);
+    //             Log.info("pair[" + x + "]: token1   :", token1);
+    //             Log.info("pair[" + x + "]: decimalsToken0   :", decimalsToken0);
+    //             Log.info("pair[" + x + "]: decimalsToken1   :", decimalsToken1);
+    //             const currentPair = {
+    //                 reserve0: reserve0,
+    //                 reserve1: reserve1,
+    //                 token0: token0,
+    //                 token1: token1,
+    //                 decimalsToken0: Number(decimalsToken0),
+    //                 decimalsToken1: Number(decimalsToken1),
+    //             }
+    //             pairData.push(currentPair);
+    //         }
+    //     }
+    // });
 
     it("should request a quote for a simple swap with Jedi supported tokens", async function () {
         if (!QUICK_MODE) {
@@ -225,7 +225,7 @@ describe("Starknet", function () {
         const ERC20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
         const wethContract = await ERC20Factory.getContractAt(wethAddress);
         const balance = await wethContract.call("balanceOf", { account: account.address });
-        Log.info("balanceOf       : ", balance["balance"]["low"]);
+        Log.info("balanceOf account :", balance["balance"]["low"]);
         const contract = new Contract(ERC20ABI, wethContract.address.toLowerCase(), defaultProvider);
 
         const approveRawTx: Call = {
