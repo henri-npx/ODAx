@@ -2,7 +2,7 @@ ODAX is an on-chain DEX Aggregator.
 
 Since there is not many DEXes with available documentation for the moment on StarkNet we are only JEDISWAP and STARKSWAP.
 
-Presentation : https://www.loom.com/share/68b747cddf5f4c5fadaab12d2888d7f6
+Presentation : https://www.loom.com/share/4aa2b9ce9dbf4ec2badbb0b677c91e16
 
 WHY ?
 
