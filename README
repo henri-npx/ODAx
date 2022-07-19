@@ -17,7 +17,7 @@ Detailed process:
 3. Get the cheapiest price from all DEXes
 4. Perform the swap on the chosen DEX router.
 
-In our tests we are using Starknetjs and Argent wallet.
+In our tests we are using Starknetjs and ArgentX Wallet.
 
 Possible improvements:
 
