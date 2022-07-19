@@ -58,7 +58,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     exchangesLength.write(0)
     Ownable.initializer(owner)
     addExchange(jediExchange)  # Tmp
-    # addExchange(starkswapExchange)  # Tmp
+    addExchange(starkswapExchange)  # Tmp
     return ()
 end
 
@@ -267,7 +267,7 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 let (local success) = IERC20.approve(_tokenIn, pairAddressA, _amountIn)
                 # Execute
                 IStarkSwapPair.exactTokenAtoMinTokenB(
-                    pairAddressA, _amountIn, Uint256(0, 0), caller
+                    pairAddressA, _amountIn, Uint256(1, 0), caller
                 )
                 return ()
             else:
@@ -279,7 +279,7 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 let (local success) = IERC20.approve(_tokenIn, pairAddressB, _amountIn)
                 # Execute
                 IStarkSwapPair.exactTokenBtoMinTokenA(
-                    pairAddressB, _amountIn, Uint256(0, 0), caller
+                    pairAddressB, _amountIn, Uint256(1, 0), caller
                 )
                 return ()
             end

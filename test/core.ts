@@ -196,7 +196,7 @@ describe("Starknet", function () {
     //     }
     // });
 
-    it("should request a quote for a simple swap with Jedi supported tokens", async function () {
+    it.skip("should request a quote for a simple swap with Jedi supported tokens", async function () {
         if (!QUICK_MODE) {
             const targetPair = pairData[0];
             const tokenIn = targetPair.token0;
@@ -222,10 +222,15 @@ describe("Starknet", function () {
     it("should approve", async function () {
 
         const wethAddress = DexTokens.ether.address.toLowerCase();
+        const daiAddress = DexTokens.dai.address.toLowerCase();
         const ERC20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
         const wethContract = await ERC20Factory.getContractAt(wethAddress);
-        const balance = await wethContract.call("balanceOf", { account: account.address });
-        Log.info("balanceOf account :", balance["balance"]["low"]);
+        const daiContract = await ERC20Factory.getContractAt(daiAddress);
+        const balanceEther = await wethContract.call("balanceOf", { account: account.address });
+        const balanceDAI = await daiContract.call("balanceOf", { account: account.address });
+        Log.info("💶 BalanceOf account before (ether):", balanceEther["balance"]["low"]);
+        Log.info("💶 BalanceOf account before (dai):", balanceDAI["balance"]["low"]);
+
         const contract = new Contract(ERC20ABI, wethContract.address.toLowerCase(), defaultProvider);
 
         const approveRawTx: Call = {
@@ -240,15 +245,15 @@ describe("Starknet", function () {
             })
         }
 
-        Log.info("approveRawTx       : ", approveRawTx);
+        Log.info("✅ approveRawTx       : ", approveRawTx);
         const txApprove = await account.execute(approveRawTx);
-        Log.info("txApprove.address       : ", txApprove.address);
-        Log.info("txApprove.class_hash       : ", txApprove.class_hash);
-        Log.info("txApprove.code       : ", txApprove.code);
-        Log.info("txApprove.transaction_hash       : ", txApprove.transaction_hash);
-        Log.info("Waiting ACCEPTED_ON_L2 :", txApprove.transaction_hash);
+        Log.info("✅ txApprove.address       : ", txApprove.address);
+        // Log.info("✅ txApprove.class_hash       : ", txApprove.class_hash);
+        // Log.info("✅ txApprove.code       : ", txApprove.code);
+        Log.info("✅ txApprove.transaction_hash       : ", txApprove.transaction_hash);
+        Log.info("🕰 Waiting ACCEPTED_ON_L2 :", txApprove.transaction_hash);
         await defaultProvider.waitForTransaction(txApprove.transaction_hash);
-        Log.info("Waiting period done !");
+        Log.info("✅ Waiting period done !");
     });
 
     it("should execute a swap", async function () {
@@ -258,7 +263,7 @@ describe("Starknet", function () {
 
         // const amountInToken0 = uint256.bnToUint256(1 * (10 ** DexTokens.ether.decimals));
         const amountInToken0 = "25000000000000000"
-        Log.info("amountInToken0  : ", amountInToken0);
+        Log.info("➤ amountInToken0  (ether): ", amountInToken0);
 
         const executeRawTx: Call = {
             contractAddress: router.address.toLowerCase(),
@@ -278,12 +283,16 @@ describe("Starknet", function () {
         // 2. Test with removed Starkswap Cairo Line of code one by one
 
         // NB : don't recompile
-        Log.info("executeRawTx       : ", executeRawTx);
+        Log.info("✅ executeRawTx       : ", executeRawTx);
         const txSwap = await account.execute(executeRawTx);
-        Log.info("txSwap.address       : ", txSwap.address);
-        Log.info("txSwap.class_hash       : ", txSwap.class_hash);
-        Log.info("txSwap.code       : ", txSwap.code);
-        Log.info("txSwap.transaction_hash       : ", txSwap.transaction_hash);
+        Log.info("✅ txSwap.address       : ", txSwap.address);
+        Log.info("✅ txSwap.class_hash       : ", txSwap.class_hash);
+        Log.info("✅ txSwap.code       : ", txSwap.code);
+        Log.info("✅ txSwap.transaction_hash       : ", txSwap.transaction_hash);
+
+        Log.info("🕰 Waiting txSwap ACCEPTED_ON_L2 :", txSwap.transaction_hash);
+        await defaultProvider.waitForTransaction(txSwap.transaction_hash);
+        Log.info("✅ Waiting period done !");
 
         // ...
         // const commonTokenIn = DexTokens.ether.address.toLowerCase();
@@ -298,6 +307,16 @@ describe("Starknet", function () {
         // const accountOZ = await starknet.deployAccount("OpenZeppelin", {
         //     privateKey: env.STARKNET_MAINNET_ACCOUNT_PRIVATE_KEY,
         // });
+
+        const wethAddress = DexTokens.ether.address.toLowerCase();
+        const daiAddress = DexTokens.dai.address.toLowerCase();
+        const ERC20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
+        const wethContract = await ERC20Factory.getContractAt(wethAddress);
+        const daiContract = await ERC20Factory.getContractAt(daiAddress);
+        const balanceEther = await wethContract.call("balanceOf", { account: account.address });
+        const balanceDAI = await daiContract.call("balanceOf", { account: account.address });
+        Log.info("💶 BalanceOf account after (ether):", balanceEther["balance"]["low"]);
+        Log.info("💶 BalanceOf account after (dai):", balanceDAI["balance"]["low"]);
 
     });
 
