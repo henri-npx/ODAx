@@ -58,7 +58,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     exchangesLength.write(0)
     Ownable.initializer(owner)
     addExchange(jediExchange)  # Tmp
-    addExchange(starkswapExchange)  # Tmp
+    # addExchange(starkswapExchange)  # Tmp
     return ()
 end
 
