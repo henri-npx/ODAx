@@ -23,22 +23,22 @@ namespace IStarkSwapPair:
     func poolTokenBalance(token_id : felt) -> (balance : Uint256):
     end
 
-    func maxTokenAToExactTokenB(
+    func maxTokenAtoExactTokenB(
         max_token_a_amount : Uint256, token_b_amount : Uint256, recipient : felt
     ):
     end
 
-    func exactTokenAToMinTokenB(
+    func exactTokenAtoMinTokenB(
         token_a_amount : Uint256, min_token_b_amount : Uint256, recipient : felt
     ):
     end
 
-    func maxTokenBToExactTokenA(
+    func maxTokenBtoExactTokenA(
         max_token_b_amount : Uint256, token_a_amount : Uint256, recipient : felt
     ):
     end
 
-    func exactTokenBToMinTokenA(
+    func exactTokenBtoMinTokenA(
         token_b_amount : Uint256, min_token_a_amount : Uint256, recipient : felt
     ):
     end

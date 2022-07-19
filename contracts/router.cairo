@@ -266,7 +266,7 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 let (pairAddressA) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
                 let (local success) = IERC20.approve(_tokenIn, pairAddressA, _amountIn)
                 # Execute
-                IStarkSwapPair.exactTokenAToMinTokenB(
+                IStarkSwapPair.exactTokenAtoMinTokenB(
                     pairAddressA, _amountIn, Uint256(0, 0), caller
                 )
                 return ()
@@ -278,7 +278,7 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
                 let (pairAddressB) = IStarkSwapRouter.getPair(exchange, _tokenOut, _tokenIn)
                 let (local success) = IERC20.approve(_tokenIn, pairAddressB, _amountIn)
                 # Execute
-                IStarkSwapPair.exactTokenBToMinTokenA(
+                IStarkSwapPair.exactTokenBtoMinTokenA(
                     pairAddressB, _amountIn, Uint256(0, 0), caller
                 )
                 return ()
