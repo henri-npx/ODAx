@@ -225,8 +225,9 @@ describe("Starknet", function () {
         const ERC20Factory: StarknetContractFactory = await hardhatStarknet.getContractFactory("ERC20");
         const wethContract = await ERC20Factory.getContractAt(wethAddress);
         const balance = await wethContract.call("balanceOf", { account: account.address });
-        Log.info("balanceOf       : ", balance);
+        Log.info("balanceOf       : ", balance["balance"]["low"]);
         const contract = new Contract(ERC20ABI, wethContract.address.toLowerCase(), defaultProvider);
+
         const approveRawTx: Call = {
             contractAddress: contract.address.toLowerCase(),
             entrypoint: "approve",
@@ -238,28 +239,41 @@ describe("Starknet", function () {
                 }
             })
         }
+
         Log.info("approveRawTx       : ", approveRawTx);
         const txApprove = await account.execute(approveRawTx);
         Log.info("txApprove.address       : ", txApprove.address);
         Log.info("txApprove.class_hash       : ", txApprove.class_hash);
         Log.info("txApprove.code       : ", txApprove.code);
         Log.info("txApprove.transaction_hash       : ", txApprove.transaction_hash);
+        Log.info("Waiting ACCEPTED_ON_L2 :", txApprove.transaction_hash);
+        await defaultProvider.waitForTransaction(txApprove.transaction_hash);
+        Log.info("Waiting period done !");
+    });
+
+    it("should execute a swap", async function () {
 
         const commonTokenIn = DexTokens.ether.address.toLowerCase();
-        const commonTokenOut = DexTokens.usdc.address.toLowerCase();
+        const commonTokenOut = DexTokens.dai.address.toLowerCase();
+
+        // const amountInToken0 = uint256.bnToUint256(1 * (10 ** DexTokens.ether.decimals));
+        const amountInToken0 = "25000000000000000"
+        Log.info("amountInToken0  : ", amountInToken0);
 
         const executeRawTx: Call = {
-            contractAddress: router.address.toLocaleLowerCase(),
+            contractAddress: router.address.toLowerCase(),
+            // contractAddress: "0x0669948a474547935c6e2744f312bf39c2bc3cbff45fa0c66a75be1a7b9b84e1".toLowerCase(),
             entrypoint: "executeSwap",
             calldata: compileCalldata({
                 _tokenIn: commonTokenIn,
                 _tokenOut: commonTokenOut,
-                _amountIn: "10000000000"
+                amount: {
+                    type: "struct",
+                    ...uint256.bnToUint256(amountInToken0)
+                }
             })
         }
 
-        // Erreur dans notre Router 
-        // Wait Contract Deployment ? Wait Approve ?
         // 1. Test without Starkswap
         // 2. Test with removed Starkswap Cairo Line of code one by one
 
@@ -270,9 +284,7 @@ describe("Starknet", function () {
         Log.info("txSwap.class_hash       : ", txSwap.class_hash);
         Log.info("txSwap.code       : ", txSwap.code);
         Log.info("txSwap.transaction_hash       : ", txSwap.transaction_hash);
-    });
 
-    it("should execute a swap ", async function () {
         // ...
         // const commonTokenIn = DexTokens.ether.address.toLowerCase();
         // const commonTokenOut = DexTokens.usdc.address.toLowerCase();

@@ -36,20 +36,6 @@ from starkware.cairo.common.math_cmp import (
     is_not_zero,
 )
 
-# struct QuoteAnswer:
-#     member tokenIn : felt
-#     member tokenOut : felt
-#     member amountIn : felt
-#     member amountOut : felt
-#     member execution : SwapExec*
-# end
-
-struct SwapExec:
-    member exchange : felt
-    member amountIn : felt
-    member next : SwapExec*
-end
-
 # Get number of exchange currently supported
 @storage_var
 func exchangesLength() -> (length : felt):
@@ -59,24 +45,6 @@ end
 @storage_var
 func exchanges(_exchangeIndex : felt) -> (exchange : felt):
 end
-
-# Proxy part
-# @external
-# func initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(proxy_admin : felt):
-#     exchangesLength.write(0)
-#     Proxy.initializer(proxy_admin)
-#     return ()
-# end
-# @external
-# func upgrade{
-#         syscall_ptr: felt*,
-#         pedersen_ptr: HashBuiltin*,
-#         range_check_ptr
-#     }(new_implementation: felt) -> ():
-#     Proxy.assert_only_admin()
-#     Proxy._set_implementation_hash(new_implementation)
-#     return ()
-# end
 
 @external
 func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name : felt):
@@ -91,13 +59,6 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     Ownable.initializer(owner)
     addExchange(jediExchange)  # Tmp
     addExchange(starkswapExchange)  # Tmp
-    # let (exchange) = getExchanges(0)
-    # assert exchange = jediExchange
-    # let (exchange) = getExchanges(1)
-    # assert exchange = starkswapExchange
-    # let (length) = exchangesLength.read()
-    # assert length = 2
-    # addExchange(starkswapExchange)  # Tmp
     return ()
 end
 
@@ -177,42 +138,29 @@ func getAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     # JediSwap
     if _exchangeIndex == 0:
         let (addr) = exchanges.read(_exchangeIndex)
-
         let (factory) = IJediRouter.factory(contract_address=addr)
         # ToDo Return if null
         let (pair) = IJediFactory.get_pair(factory, _tokenIn, _tokenOut)
         let (reserve0, reserve1, block_timestamp_last) = IJediPair.get_reserves(
             contract_address=pair
         )
-        # Is reverse0 == tokenIn ? ...
         let (res) = IJediRouter.get_amount_out(addr, _amountIn, reserve0, reserve1)
         return (res, _exchangeIndex)
     end
-
     # StarkSwap
     if _exchangeIndex == 1:
         let (local addr) = exchanges.read(_exchangeIndex)
-
         let (local pairAddress) = IStarkSwapRouter.getPair(addr, _tokenIn, _tokenOut)
-        # # ToDo Return if null
         let (tokenA) = IStarkSwapPair.getTokenA(pairAddress)
         let reserveB : Uint256 = IStarkSwapPair.poolTokenBalance(pairAddress, 2)
         let reserveA : Uint256 = IStarkSwapPair.poolTokenBalance(pairAddress, 1)
-
         if _tokenIn == tokenA:
-            let (price) = IStarkSwapPair.get_input_price(pairAddress, _amountIn, reserveA, reserveB)  # Possible error with .low
-            # let (part1, carry1) = uint256_mul(_amountIn, Uint256(10000, 0))
-            # let (part2, carry2) = uint256_mul(price, Uint256(10000, 0)) // inutile en fait
-            # let (res1, div) = uint256_signed_div_rem(part1, part2)
-
+            let (price) = IStarkSwapPair.get_input_price(pairAddress, _amountIn, reserveA, reserveB)
             return (price, _exchangeIndex)
         else:
             let (price) = IStarkSwapPair.get_output_price(
                 pairAddress, _amountIn, reserveA, reserveB
-            )  # Possible error with .low
-            # let (part1, carry1) = uint256_mul(_amountIn, Uint256(10000, 0))  # pb de decimals entre token In et token Out
-            # let (part2, carry2) = uint256_mul(price, Uint256(10000, 0))
-            # let (res2, div) = uint256_signed_div_rem(part1, part2)
+            )
             return (price, _exchangeIndex)
         end
     end
@@ -224,7 +172,13 @@ end
 # AmountOut = Output, start at 0
 # optimaLIndex = OptimaL Index, start at 0
 # We use them to get keep the value accross multiple recursive calls that overwrite local memory
-# @view
+# _currentIndex : felt      : Index of the exchange
+# _tokenIn : felt           : Token sold
+# _tokenOut : felt          : Token bought
+# _amountIn : Uint256       : Amout of token sold
+# amountOut : Uint256       : Expected amout out
+# optimaLIndex : felt       : Final return of best exchange
+
 func _optimaLAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _currentIndex : felt,
     _tokenIn : felt,
@@ -234,14 +188,11 @@ func _optimaLAmountOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     optimaLIndex : felt,
 ) -> (amountOut : Uint256, exchangeIndex : felt):
     alloc_locals
-
     let (length) = exchangesLength.read()
-
     # We don't passe here at first call
     if _currentIndex == length:
         return (amountOut, optimaLIndex)
     end
-
     let (res, _exchangeIndex) = getAmountOut(_currentIndex, _tokenIn, _tokenOut, _amountIn)
     let (isExchangeOutputLower) = uint256_le(res, amountOut)
     if isExchangeOutputLower == 1:
@@ -292,7 +243,7 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
         assert swapPath[0] = _tokenIn
         assert swapPath[1] = _tokenOut
         IJediRouter.swap_exact_tokens_for_tokens(
-            exchange, _amountIn, Uint256(42, 0), 2, swapPath, caller, block_timestamp + 4200
+            exchange, _amountIn, Uint256(42, 0), 2, swapPath, caller, block_timestamp + 4200000
         )
         tempvar syscall_ptr = syscall_ptr
         tempvar pedersen_ptr = pedersen_ptr
@@ -305,31 +256,31 @@ func _executeSwapOnExchange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
             tempvar syscall_ptr = syscall_ptr
             tempvar pedersen_ptr = pedersen_ptr
             tempvar range_check_ptr = range_check_ptr
-            # ToDo TokenA/TokenB if/else
-            # Insert something here to make the test pass
             let (pairAddress) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
             let (tokenA) = IStarkSwapPair.getTokenA(pairAddress)
             if _tokenIn == tokenA:
                 tempvar syscall_ptr = syscall_ptr
                 tempvar pedersen_ptr = pedersen_ptr
                 tempvar range_check_ptr = range_check_ptr
-
+                # Approve
                 let (pairAddressA) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
+                let (local success) = IERC20.approve(_tokenIn, pairAddressA, _amountIn)
+                # Execute
                 IStarkSwapPair.exactTokenAToMinTokenB(
-                    pairAddressA, _amountIn, Uint256(42, 0), caller
+                    pairAddressA, _amountIn, Uint256(0, 0), caller
                 )
-
                 return ()
             else:
                 tempvar syscall_ptr = syscall_ptr
                 tempvar pedersen_ptr = pedersen_ptr
                 tempvar range_check_ptr = range_check_ptr
-
-                let (pairAddressB) = IStarkSwapRouter.getPair(exchange, _tokenIn, _tokenOut)
+                # Approve
+                let (pairAddressB) = IStarkSwapRouter.getPair(exchange, _tokenOut, _tokenIn)
+                let (local success) = IERC20.approve(_tokenIn, pairAddressB, _amountIn)
+                # Execute
                 IStarkSwapPair.exactTokenBToMinTokenA(
-                    pairAddressB, _amountIn, Uint256(42, 0), caller
+                    pairAddressB, _amountIn, Uint256(0, 0), caller
                 )
-
                 return ()
             end
         end
