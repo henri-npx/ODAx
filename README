@@ -22,4 +22,7 @@ In our tests we are using Starknetjs and ArgentX Wallet.
 Possible improvements:
 
 A lot of improvements can be done on our algorithm to chose best swaps. We have made a lot of research on centralized DEX Aggregators like Paraswap and think it could be possible to reproduce such a product in a decentralized way thanks to StarkNet. We could improve the main algorithm that helps us to swap our token. Pair liquidity also needs to be taken into account. Choosing the perfect route to perform a swap on many DEXes has a lot of similarities with the traveling salesman problem, there is no perfect solutions but we can implement really performant algorithms to resolve it and StarkNet computations possibilities allows it.
-Also another problem that was limiting us in our application is the disparities in price between DEXes on Testnet. Since those are not real assets, price are not arbitraged and present big differences. We could have implemented a simple algorithm based on liquidity if prices were close to each other but it is not possible right now with current state. On mainnet it will much more efficient.
+
+Also another issue that was limiting us in our application is the disparities in price between DEXes on Testnet. Since those are not real assets, price are not arbitraged and present big differences. We could have implemented a simple algorithm based on liquidity if prices were close to each other but it is not possible right now with current state. On mainnet it will much more efficient.
+
+There is also a lack of convention on DEXes structure. On EVM compatible chains a lot of DEXes are using the same interfaces so it is easier to write readable code that can apply to a lot of different DEXes
