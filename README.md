@@ -2,6 +2,8 @@ ODAX is an on-chain DEX Aggregator.
 
 Since there is not many DEXes with available documentation for the moment on StarkNet we are only JEDISWAP and STARKSWAP.
 
+Presentation : https://www.loom.com/share/68b747cddf5f4c5fadaab12d2888d7f6
+
 WHY ?
 
 We have made this project for this hackathon because we believe on-chain DEX Aggregator is needed in the crypto ecosystem. Using centralized is relying on centralized entities and it's may not be as secured as a decentralized solution. Some DEX Aggregators solutions exists in EVM compatible chain like the one done by Yield Yak team on Avalanche. But with such application on EVM compatible chains you are quickly limited by the computation cost itself. This is not the case with StarkNet and Cairo.
